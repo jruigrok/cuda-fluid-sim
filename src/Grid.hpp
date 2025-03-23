@@ -15,34 +15,37 @@ class Grid : public sf::Drawable, sf::Transformable {
 
 public:
 	Grid(uint32_t width, uint32_t height, uint32_t cellSize);
-	~Grid();
 	uint32_t getPos(const uint32_t i, const uint32_t j) const;
-	const Cell& getCell(const uint32_t i, const uint32_t j) const;
 	virtual void draw(sf::RenderTarget& target, sf::RenderStates states) const;
 	void update();
 
 private:
 
-	void addSource(float Cell::* x_vel, float Cell::* y_vel);
+	void addSource(float Cell::* x_vel, float Cell::* y_vel, float Cell::* density);
 	void initializeVAs();
-	void swap(float Cell::*& field, float Cell::*& pastfield);
-	void updateVAs();
-	void solveDiffusion(float Cell::* field, float Cell::* pastfield, uint32_t p);
-	void solveAdvection(float Cell::* field, float Cell::* pastfield, uint32_t p);
-	void setBounds(uint32_t b, float Cell::*field);
-	void project();
+	void updateVAs(float Cell::* x_vel, float Cell::* y_vel, float Cell::* density);
+	//void solveDiffusion(float Cell::* field, float Cell::* pastfield);
+	void solveAdvection(float Cell::* x_vel_new, float Cell::* y_vel_new, 
+						float Cell::* density_new, 
+						float Cell::* x_vel, float Cell::* y_vel, 
+						float Cell::* density);
+
+	const float sample(const float x, const float y, float Cell::* field, const float dx, const float dy) const;
+	void project(float Cell::* x_vel_cur, float Cell::* y_vel_cur);
 	double totalFluid() const;
 
 
-	Cell* grid;
-    sf::Vertex* cellVertices;
-    sf::Vertex* lineVertices;
+	std::vector<Cell> grid;
+	std::vector<sf::Vertex> cellVertices;
+	std::vector<sf::Vertex> lineVertices;
 	const uint32_t width;
 	const uint32_t height;
 	const uint32_t cellSize;
 	static constexpr float diff = 0.00001f;
-	static constexpr float dt = 0.0005f;
-	static constexpr float viscosity = 1.0;
+	static constexpr float dt = 0.15f;
+	static constexpr float viscosity = 1.0f;
+	static constexpr float over_relaxation = 1.9f;
+	static constexpr uint32_t num_iter = 20u;
 	sf::VertexBuffer cellVA;
 	sf::VertexBuffer lineVA;
 	float Cell::* x_vel_buf1 = &Cell::x_vel_1;

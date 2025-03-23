@@ -9,8 +9,8 @@
 int main(int argc, char* argv[]) {
     static constexpr uint32_t screenWidth = 1980 / 2;
     static constexpr uint32_t screenHeight = 1080 / 2;
-    static constexpr uint32_t width = 400;
-    static constexpr uint32_t height = 400;
+    static constexpr uint32_t width = 300;
+    static constexpr uint32_t height = 50;
     static constexpr uint32_t cellSize = 10;
     static constexpr uint32_t frameLimit = 60;
 
@@ -38,10 +38,13 @@ int main(int argc, char* argv[]) {
         while (window.pollEvent(Event)) {
             if (Event.type == sf::Event::Closed)
                 window.close();
-            if (Event.type == sf::Event::KeyPressed) {
+            else if (Event.type == sf::Event::KeyPressed) {
                 if (Event.key.code == sf::Keyboard::Escape) {
                     window.close();
                 }
+            } else if (Event.type == sf::Event::Resized) {
+                sf::View view(sf::FloatRect(0, 0, Event.size.width, Event.size.height));
+                window.setView(view);
             }
             viewPort.handleEvent(Event);
         }
@@ -53,7 +56,6 @@ int main(int argc, char* argv[]) {
         }
 
         window.clear();
-
         window.draw(grid, renderState);
         grid.update();
         window.display();
