@@ -13,29 +13,36 @@ Grid::Grid(uint32_t width_, uint32_t height_, uint32_t cellSize_):
     cellVA.setPrimitiveType(sf::Quads);
     lineVA.setPrimitiveType(sf::Lines);
 
-    for (uint32_t j = 0; j < height; j++) {
-        for (uint32_t i = 0; i < width; i++) {
-            const uint32_t pos = getPos(i, j);
-            if (i == 0 || j == 0 || j == height - 1) {
-                grid[pos].cell_type = Cell_Type::SOLID;
-            } else {
-                grid[pos].cell_type = Cell_Type::LIQUID;
-                //grid[pos].density_0 = static_cast<float>(std::rand()) / RAND_MAX;
-            }
-        }
-    }
-
-    for (uint64_t i = 0; i < 16; i++) {
-        for (uint64_t j = 0; j < 16; j++) {
-            grid[getPos(75 + i, 17 + j)].cell_type = Cell_Type::SOLID;
-        }
-    }
-
     initializeVAs();
 }
 
-inline uint32_t Grid::getPos(const uint32_t i, const uint32_t j) const {
-    return j * width + i;
+inline const uint32_t Grid::getPos(const uint32_t x, const uint32_t y) const {
+    return y * width + x;
+}
+
+const Cell& Grid::getCell(const uint32_t x, const uint32_t y) {
+    return grid[getPos(x,y)];
+}
+
+void Grid::setCellType(const Cell_Type cell_type, const uint32_t x, const uint32_t y) {
+    grid[getPos(x,y)].cell_type = cell_type;
+}
+
+void Grid::setField(const Field field, const float value, const uint32_t x, const uint32_t y) {
+    switch (field)
+    {
+    case Field::DENSITY:
+        grid[getPos(x,y)].*density_buf0 = value;
+        break;
+    case Field::X_VEL:
+        grid[getPos(x,y)].*x_vel_buf0 = value;
+        break;
+    case Field::Y_VEL:
+        grid[getPos(x,y)].*y_vel_buf0 = value;
+        break;
+    default:
+        break;
+    }
 }
 
 void Grid::draw(sf::RenderTarget& target, sf::RenderStates states) const {
@@ -47,22 +54,12 @@ void Grid::draw(sf::RenderTarget& target, sf::RenderStates states) const {
 
 void Grid::update() {
     updateVAs(x_vel_buf0, y_vel_buf0, density_buf0);
-    addSource(x_vel_buf0, y_vel_buf0, density_buf0);
     project(x_vel_buf0, y_vel_buf0);
     solveAdvection(x_vel_buf1, y_vel_buf1, density_buf1, x_vel_buf0, y_vel_buf0, density_buf0);
     std::swap(x_vel_buf1, x_vel_buf0);
     std::swap(y_vel_buf1, y_vel_buf0);
     std::swap(density_buf1, density_buf0);
     //std::cout << std::to_string(totalFluid()) << std::endl;
-}
-
-void Grid::addSource(float Cell::* x_vel, float Cell::* y_vel, float Cell::* density) {
-    for (uint32_t i = 0; i < 48; i++) {
-        grid[getPos(1, 1 + i)].*x_vel = 10.0;
-    }
-    for (uint32_t i = 0; i < 10; i++) {
-        grid[getPos(2, 21 + i)].*density_buf0 = 10.0;
-    }
 }
 
 void Grid::initializeVAs() {
@@ -114,23 +111,6 @@ void Grid::updateVAs(float Cell::* x_vel, float Cell::* y_vel, float Cell::* den
     lineVA.update(lineVertices.data());
 }
 
-// void Grid::solveDiffusion(float Cell::* field, float Cell::* pastfield) {
-//     float a = dt * diff * width * height;
-
-//     for (uint32_t k = 0; k < 20; k++) {
-//         for (uint32_t j = 1; j < height - 1; j++) {
-//             for (uint32_t i = 1; i < width - 1; i++) {
-//                 uint32_t pos = getPos(i, j);
-//                 grid[pos].*field = (grid[pos].*pastfield + a *
-//                                     (grid[pos - 1].*field +
-//                                     grid[pos + 1].*field +
-//                                     grid[pos - width].*field +
-//                                     grid[pos + width].*field)) / (1 + 4 * a);
-//             }
-//         }
-//     }
-// }
-
 const float Grid::sample(const float x, const float y, float Cell::* field, const float dx, const float dy) const {
     const uint32_t x0 = std::clamp(static_cast<uint32_t>(x - dx), 1u, width - 2);
     const uint32_t y0 = std::clamp(static_cast<uint32_t>(y - dy), 1u, height - 2);
@@ -148,8 +128,8 @@ const float Grid::sample(const float x, const float y, float Cell::* field, cons
 }
 
 void Grid::solveAdvection(float Cell::* x_vel_new, float Cell::* y_vel_new, float Cell::* density_new, float Cell::* x_vel, float Cell::* y_vel, float Cell::* density) {
-    for (uint32_t j = 1; j < height; j++) {
-        for (uint32_t i = 1; i < width; i++) {
+    for (uint32_t i = 1; i < width; i++) {
+        for (uint32_t j = 1; j < height; j++) { 
             const uint32_t pos = getPos(i, j);
             if (grid[pos].cell_type == Cell_Type::SOLID)
                 continue;
@@ -189,8 +169,8 @@ void Grid::solveAdvection(float Cell::* x_vel_new, float Cell::* y_vel_new, floa
 
 void Grid::project(float Cell::* x_vel, float Cell::* y_vel) {
     for (uint32_t k = 0; k < num_iter; k++) {
-        for (uint32_t j = 1; j < height - 1; j++) {
-            for (uint32_t i = 1; i < width - 1; i++) {
+        for (uint32_t i = 1; i < width - 1; i++) {
+            for (uint32_t j = 1; j < height - 1; j++) { 
                 const uint32_t pos = getPos(i, j);
                 if (grid[pos].cell_type == Cell_Type::SOLID)
                     continue;

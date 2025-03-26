@@ -9,10 +9,10 @@
 int main(int argc, char* argv[]) {
     static constexpr uint32_t screenWidth = 1980 / 2;
     static constexpr uint32_t screenHeight = 1080 / 2;
-    static constexpr uint32_t width = 300;
-    static constexpr uint32_t height = 50;
+    static constexpr uint32_t width = 600;
+    static constexpr uint32_t height = 100;
     static constexpr uint32_t cellSize = 10;
-    static constexpr uint32_t frameLimit = 60;
+    static constexpr uint32_t frameLimit = 165;
 
     sf::Clock clock;
 
@@ -29,6 +29,25 @@ int main(int argc, char* argv[]) {
     Grid grid(width, height, cellSize);
 
     window.setFramerateLimit(frameLimit);
+
+    // Init grid
+
+    for (uint32_t j = 0; j < height; j++) {
+        for (uint32_t i = 0; i < width; i++) {
+            if (i == 0 || j == 0 || j == height - 1) {
+                grid.setCellType(Cell_Type::SOLID, i, j);
+            } else {
+                grid.setCellType(Cell_Type::LIQUID, i, j);
+            }
+        }
+    }
+
+    for (uint32_t i = 0; i < 32; i++) {
+        for (uint32_t j = 0; j < 32; j++) {
+            grid.setCellType(Cell_Type::SOLID, 150 + i, 33 + j);
+        }
+    }
+
   
     while (window.isOpen()) {
         sf::Time deltaTime = clock.restart();
@@ -53,6 +72,13 @@ int main(int argc, char* argv[]) {
             std::cout << "FPS: " << frames << std::endl;
             frames = 0;
             elapsedTime = 0.0f;
+        }
+
+        for (uint32_t i = 1; i < 99; i++) {
+            grid.setField(Grid::Field::X_VEL, 10.0f, 1u, i);
+        }
+        for (uint32_t i = 0; i < 20; i++) {
+            grid.setField(Grid::Field::DENSITY, 1.0f, 4u, 39u + i);
         }
 
         window.clear();

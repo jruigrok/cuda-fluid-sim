@@ -1,5 +1,6 @@
 #pragma once
 #include <SFML/Window.hpp>
+#include <array>
 
 enum Cell_Type : uint8_t { LIQUID = 1, SOLID = 0 };
 
