@@ -29,12 +29,12 @@ public:
 
 private:
 
-	std::vector<sf::RenderStates*> statesV;
+	std::vector<sf::RenderStates*> states_vector;
 	sf::Transform transform;
 	sf::Vector2f pos;
-	sf::Vector2f anchorPos;
-	bool mouseDown;
+	sf::Vector2f anchor_pos;
+	bool mouse_down;
 	float scale;
-	static constexpr float scrollZoomMag = 0.8;
-	sf::Vector2f mousePos;
+	static constexpr float SCROLL_ZOOM_MAG = 0.8;
+	sf::Vector2f mouse_pos;
 };

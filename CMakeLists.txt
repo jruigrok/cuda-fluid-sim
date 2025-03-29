@@ -15,3 +15,6 @@ add_executable(cuda_fluid_sim
 )
 target_include_directories(cuda_fluid_sim PRIVATE src)
 target_link_libraries(cuda_fluid_sim sfml-graphics sfml-window sfml-system)
+
+set(CIRCLE_IMG_PATH "${CMAKE_CURRENT_SOURCE_DIR}/artifacts/circle.png")
+add_compile_definitions(CIRCLE_IMG_PATH="${CIRCLE_IMG_PATH}")

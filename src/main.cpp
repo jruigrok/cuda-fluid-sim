@@ -7,34 +7,34 @@
 #include <Grid.hpp>
 
 int main(int argc, char* argv[]) {
-    static constexpr uint32_t screenWidth = 1980 / 2;
-    static constexpr uint32_t screenHeight = 1080 / 2;
-    static constexpr uint32_t width = 600;
-    static constexpr uint32_t height = 100;
-    static constexpr uint32_t cellSize = 10;
-    static constexpr uint32_t frameLimit = 165;
+    static constexpr uint32_t SCREEN_WIDTH = 1980 / 2;
+    static constexpr uint32_t SCREEEN_HEIGHT = 1080 / 2;
+    static constexpr uint32_t WIDTH = 600;
+    static constexpr uint32_t HEIGHT = 100;
+    static constexpr uint32_t CELL_SIZE = 10;
+    static constexpr uint32_t FRAME_LIMIT = 165;
 
     sf::Clock clock;
 
     int frames = 0;
-    float elapsedTime = 0.0f;
+    float elapsed_time = 0.0f;
 
     sf::Vector2i mouse;
-    sf::Texture circleImg;
-    sf::RenderStates renderState;
-    sf::RenderWindow window(sf::VideoMode(screenWidth, screenHeight), "Fluid Sim");
-    std::vector<sf::RenderStates*> statesV = { &renderState };
-    ViewPort viewPort(statesV, { 0,0 }, 0.5);
+    sf::Texture circle_img;
+    sf::RenderStates render_state;
+    sf::RenderWindow window(sf::VideoMode(SCREEN_WIDTH, SCREEEN_HEIGHT), "Fluid Sim");
+    std::vector<sf::RenderStates*> states_vector = { &render_state };
+    ViewPort viewPort(states_vector, { 0,0 }, 0.5);
 
-    Grid grid(width, height, cellSize);
+    Grid grid(WIDTH, HEIGHT, CELL_SIZE, 50000);
 
-    window.setFramerateLimit(frameLimit);
+    window.setFramerateLimit(FRAME_LIMIT);
 
     // Init grid
 
-    for (uint32_t j = 0; j < height; j++) {
-        for (uint32_t i = 0; i < width; i++) {
-            if (i == 0 || j == 0 || j == height - 1) {
+    for (uint32_t j = 0; j < HEIGHT; j++) {
+        for (uint32_t i = 0; i < WIDTH; i++) {
+            if (i == 0 || j == 0 || j == HEIGHT - 1 || i == WIDTH - 1) {
                 grid.setCellType(Cell_Type::SOLID, i, j);
             } else {
                 grid.setCellType(Cell_Type::LIQUID, i, j);
@@ -51,38 +51,31 @@ int main(int argc, char* argv[]) {
   
     while (window.isOpen()) {
         sf::Time deltaTime = clock.restart();
-        elapsedTime += deltaTime.asSeconds();
+        elapsed_time += deltaTime.asSeconds();
         frames++;
-        sf::Event Event;
-        while (window.pollEvent(Event)) {
-            if (Event.type == sf::Event::Closed)
+        sf::Event event;
+        while (window.pollEvent(event)) {
+            if (event.type == sf::Event::Closed)
                 window.close();
-            else if (Event.type == sf::Event::KeyPressed) {
-                if (Event.key.code == sf::Keyboard::Escape) {
+            else if (event.type == sf::Event::KeyPressed) {
+                if (event.key.code == sf::Keyboard::Escape) {
                     window.close();
                 }
-            } else if (Event.type == sf::Event::Resized) {
-                sf::View view(sf::FloatRect(0, 0, Event.size.width, Event.size.height));
+            } else if (event.type == sf::Event::Resized) {
+                sf::View view(sf::FloatRect(0, 0, event.size.width, event.size.height));
                 window.setView(view);
             }
-            viewPort.handleEvent(Event);
+            viewPort.handleEvent(event);
         }
 
-        if (elapsedTime >= 1.0f) {
+        if (elapsed_time >= 1.0f) {
             std::cout << "FPS: " << frames << std::endl;
             frames = 0;
-            elapsedTime = 0.0f;
-        }
-
-        for (uint32_t i = 1; i < 99; i++) {
-            grid.setField(Grid::Field::X_VEL, 10.0f, 1u, i);
-        }
-        for (uint32_t i = 0; i < 20; i++) {
-            grid.setField(Grid::Field::DENSITY, 1.0f, 4u, 39u + i);
+            elapsed_time = 0.0f;
         }
 
         window.clear();
-        window.draw(grid, renderState);
+        window.draw(grid, render_state);
         grid.update();
         window.display();
     }
