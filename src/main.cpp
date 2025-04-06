@@ -9,9 +9,11 @@
 int main(int argc, char* argv[]) {
     static constexpr uint32_t SCREEN_WIDTH = 1980 / 2;
     static constexpr uint32_t SCREEEN_HEIGHT = 1080 / 2;
-    static constexpr uint32_t WIDTH = 600;
-    static constexpr uint32_t HEIGHT = 100;
-    static constexpr uint32_t CELL_SIZE = 10;
+    static constexpr uint32_t WIDTH = 360;
+    static constexpr uint32_t HEIGHT = 150;
+    static constexpr uint32_t F_CELL_RATIO = 3;
+    static constexpr uint32_t NUM_PARTICLES = 100000;
+    static constexpr uint32_t RENDER_SCALE = 1;
     static constexpr uint32_t FRAME_LIMIT = 165;
 
     sf::Clock clock;
@@ -26,7 +28,7 @@ int main(int argc, char* argv[]) {
     std::vector<sf::RenderStates*> states_vector = { &render_state };
     ViewPort viewPort(states_vector, { 0,0 }, 0.5);
 
-    Grid grid(WIDTH, HEIGHT, CELL_SIZE, 50000);
+    Grid grid(WIDTH, HEIGHT, F_CELL_RATIO, NUM_PARTICLES, RENDER_SCALE);
 
     window.setFramerateLimit(FRAME_LIMIT);
 
@@ -41,13 +43,6 @@ int main(int argc, char* argv[]) {
             }
         }
     }
-
-    for (uint32_t i = 0; i < 32; i++) {
-        for (uint32_t j = 0; j < 32; j++) {
-            grid.setCellType(Cell_Type::SOLID, 150 + i, 33 + j);
-        }
-    }
-
   
     while (window.isOpen()) {
         sf::Time deltaTime = clock.restart();
@@ -66,6 +61,20 @@ int main(int argc, char* argv[]) {
                 window.setView(view);
             }
             viewPort.handleEvent(event);
+        }
+
+        if (viewPort.getMouseDown()) {
+            
+            const sf::Vector2f mouse_pos = viewPort.getRelativeMousePos();
+            std::cout << mouse_pos.x << std::endl;
+            const uint32_t x = static_cast<uint32_t>(mouse_pos.x / F_CELL_RATIO);
+            const uint32_t y = static_cast<uint32_t>(mouse_pos.y / F_CELL_RATIO);
+            grid.setCellType(Cell_Type::SOLID, static_cast<uint32_t>(mouse_pos.x / F_CELL_RATIO), static_cast<uint32_t>(mouse_pos.y / F_CELL_RATIO));
+            grid.setCellField(&Cell::x_vel, 0, x, y);
+            grid.setCellField(&Cell::y_vel, 0, x, y);
+            grid.setCellField(&Cell::p_x_vel, 0, x, y);
+            grid.setCellField(&Cell::p_y_vel, 0, x, y);
+            grid.setCellField(&Cell::density, 0, x, y);
         }
 
         if (elapsed_time >= 1.0f) {

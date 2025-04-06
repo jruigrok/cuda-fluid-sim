@@ -7,25 +7,18 @@
 
 class ViewPort {
 public:
-	ViewPort(std::vector<sf::RenderStates*> statesV_, sf::Vector2f pos_, float zoom_);
-
-	void updateStates(sf::Transform& transform);
-
-	void zoom(float factor);
-
-	void move(sf::Vector2f pos_);
-
-	void moveTo(sf::Vector2f pos_);
-
-	sf::Vector2f getTruePos(sf::Vector2f pos_) const;
-
+	ViewPort(const std::vector<sf::RenderStates*> statesV_, const sf::Vector2f pos_, const float zoom_);
+	void updateStates(const sf::Transform& transform);
+	void zoom(const float factor);
+	void move(const sf::Vector2f pos_);
+	void moveTo(const sf::Vector2f pos_);
+	const sf::Vector2f getTruePos(const sf::Vector2f pos_) const;
 	void zoomOnPoint(float factor, sf::Vector2f pos_);
-
-	void handleEvent(sf::Event event);
-
-	float getScale() const;
-
-	sf::Vector2f getPos() const;
+	void handleEvent(const sf::Event event);
+	const float getScale() const;
+	const sf::Vector2f getPos() const;
+	const sf::Vector2f getRelativeMousePos() const;
+	const bool getMouseDown() const;
 
 private:
 

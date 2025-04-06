@@ -1,6 +1,6 @@
 #include "ViewPort.hpp"
 
-ViewPort::ViewPort(std::vector<sf::RenderStates*> statesV_, sf::Vector2f pos_, float zoom_) :
+ViewPort::ViewPort(const std::vector<sf::RenderStates*> statesV_, const sf::Vector2f pos_, const float zoom_) :
     states_vector(statesV_),
     pos(0,0),
 	anchor_pos(0,0),
@@ -12,30 +12,38 @@ ViewPort::ViewPort(std::vector<sf::RenderStates*> statesV_, sf::Vector2f pos_, f
     move(pos_);
 };
 
-void ViewPort::updateStates(sf::Transform& transform) {
+void ViewPort::updateStates(const sf::Transform& transform) {
     for (sf::RenderStates* state : states_vector) {
         state->transform = transform;
     }
 }
 
-void ViewPort::zoom(float factor) {
+void ViewPort::zoom(const float factor) {
     transform.scale(factor, factor);
     scale *= factor;
     updateStates(transform);
 }
 
-void ViewPort::move(sf::Vector2f pos_) {
+void ViewPort::move(const sf::Vector2f pos_) {
     transform.translate(pos_ / scale);
     pos += pos_;
     updateStates(transform);
 }
 
-void ViewPort::moveTo(sf::Vector2f pos_) {
+void ViewPort::moveTo(const sf::Vector2f pos_) {
     move(pos_ - pos);
 }
 
-sf::Vector2f ViewPort::getTruePos(sf::Vector2f pos_) const {
+const sf::Vector2f ViewPort::getTruePos(const sf::Vector2f pos_) const {
     return (pos_ - pos) / scale;
+}
+
+const sf::Vector2f ViewPort::getRelativeMousePos() const {
+    return getTruePos(mouse_pos);
+}
+
+const bool ViewPort::getMouseDown() const {
+    return mouse_down;
 }
 
 void ViewPort::zoomOnPoint(float factor, sf::Vector2f pos_) {
@@ -45,7 +53,7 @@ void ViewPort::zoomOnPoint(float factor, sf::Vector2f pos_) {
     zoom(factor);
 }
 
-void ViewPort::handleEvent(sf::Event event) {
+void ViewPort::handleEvent(const sf::Event event) {
     if (event.type == sf::Event::MouseWheelScrolled) {
         if (event.mouseWheelScroll.delta < 0) {
             zoomOnPoint(SCROLL_ZOOM_MAG, mouse_pos);
@@ -72,10 +80,10 @@ void ViewPort::handleEvent(sf::Event event) {
     }
 }
 
-float ViewPort::getScale() const {
+const float ViewPort::getScale() const {
     return scale;
 }
 
-sf::Vector2f ViewPort::getPos() const {
+const sf::Vector2f ViewPort::getPos() const {
     return pos;
 }
