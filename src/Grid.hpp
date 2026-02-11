@@ -35,7 +35,7 @@ public:
   void update();
 
 private:
-  struct cellData {
+  struct InterpolationData {
     const std::array<uint32_t, 4> f_pos;
     const std::array<float, 4> diff;
   };
@@ -47,10 +47,10 @@ private:
   void particleVelToCell();
   void cellVelToParticle();
   void updateDensity();
-  void collide(const uint32_t pos1, const uint32_t pos2);
-  void collideSolid(const uint32_t pos1, const uint32_t pos2);
+  void handleParticleCol(const uint32_t pos1, const uint32_t pos2);
+  void handleSolidCol(const uint32_t pos1, const uint32_t pos2);
   void copyField(float Cell::*from, float Cell::*to);
-  void pBounds(Particle &p);
+  void particleBounds(Particle &p);
   const uint32_t getPPos(const uint32_t x, const uint32_t y) const;
   const uint32_t P2F(const uint32_t x, const uint32_t y) const;
   const uint32_t P2F(const uint32_t p_pos) const;
@@ -61,7 +61,7 @@ private:
   const float getFlip(float Cell::*feild, float Cell::*pre_feild,
                       const std::array<uint32_t, 4> f_pos,
                       const std::array<float, 4> vd, const float vd_s);
-  const cellData getData(Particle &p, const bool x, const bool y);
+  const InterpolationData getInterpolatedVel(Particle &p, const bool x, const bool y);
   static const float genRndFloat(const float min, const float max);
 
   static constexpr float GRAVITY = 50.0f;

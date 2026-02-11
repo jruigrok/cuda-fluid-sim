@@ -99,7 +99,7 @@ inline const uint32_t Grid::P2F(const uint32_t p_pos) const {
   return P2F(x, y);
 }
 
-inline void Grid::pBounds(Particle &p) {
+inline void Grid::particleBounds(Particle &p) {
   p.x_pos = std::clamp(p.x_pos, DIAMETER * f_cell_size + RADIUS,
                        static_cast<float>(p_width) -
                            (DIAMETER * f_cell_size + RADIUS));
@@ -151,7 +151,7 @@ void Grid::updateDensity() {
     c.density = 0.0f;
 
   for (Particle &p : particles) {
-    const cellData cd = getData(p, false, false);
+    const InterpolationData cd = getInterpolatedVel(p, false, false);
 
     f_grid[cd.f_pos[0]].density += cd.diff[0];
     f_grid[cd.f_pos[1]].density += cd.diff[1];
@@ -284,7 +284,7 @@ void Grid::project() {
 void Grid::addParticlesToMap() {
   std::fill(p_grid_size.begin(), p_grid_size.end(), 0);
   for (Particle &p : particles) {
-    pBounds(p);
+    particleBounds(p);
     const uint32_t x = static_cast<uint32_t>(p.x_pos);
     const uint32_t y = static_cast<uint32_t>(p.y_pos);
     const uint32_t p_pos = getPPos(x, y);
@@ -302,39 +302,41 @@ void Grid::updateParticles() {
     p.x_pos += p.x_vel * DT;
     p.y_pos += p.y_vel * DT;
   }
+
   addParticlesToMap();
   for (uint i = 0; i < NUM_P_SUB_STEP; i++) {
     for (uint32_t p_pos = 0; p_pos < num_p_cells; p_pos++) {
       const uint8_t v1l = p_grid_size[p_pos];
       if (v1l != 0) {
-        collide(p_pos, p_pos - (p_width + 1));
-        collide(p_pos, p_pos - (p_width));
-        collide(p_pos, p_pos - (p_width - 1));
-        collide(p_pos, p_pos - 1);
-        collide(p_pos, p_pos);
-        collide(p_pos, p_pos + 1);
-        collide(p_pos, p_pos + (p_width - 1));
-        collide(p_pos, p_pos + (p_width));
-        collide(p_pos, p_pos + (p_width + 1));
+        handleParticleCol(p_pos, p_pos - (p_width + 1));
+        handleParticleCol(p_pos, p_pos - (p_width));
+        handleParticleCol(p_pos, p_pos - (p_width - 1));
+        handleParticleCol(p_pos, p_pos - 1);
+        handleParticleCol(p_pos, p_pos);
+        handleParticleCol(p_pos, p_pos + 1);
+        handleParticleCol(p_pos, p_pos + (p_width - 1));
+        handleParticleCol(p_pos, p_pos + (p_width));
+        handleParticleCol(p_pos, p_pos + (p_width + 1));
       }
     }
   }
+
   for (uint32_t p_pos = 0; p_pos < num_p_cells; p_pos++) {
     const uint8_t v1l = p_grid_size[p_pos];
     if (v1l != 0) {
-      collideSolid(p_pos, p_pos - (p_width + 1));
-      collideSolid(p_pos, p_pos - (p_width));
-      collideSolid(p_pos, p_pos - (p_width - 1));
-      collideSolid(p_pos, p_pos - 1);
-      collideSolid(p_pos, p_pos);
-      collideSolid(p_pos, p_pos + 1);
-      collideSolid(p_pos, p_pos + (p_width - 1));
-      collideSolid(p_pos, p_pos + (p_width));
-      collideSolid(p_pos, p_pos + (p_width + 1));
+      handleSolidCol(p_pos, p_pos - (p_width + 1));
+      handleSolidCol(p_pos, p_pos - (p_width));
+      handleSolidCol(p_pos, p_pos - (p_width - 1));
+      handleSolidCol(p_pos, p_pos - 1);
+      handleSolidCol(p_pos, p_pos);
+      handleSolidCol(p_pos, p_pos + 1);
+      handleSolidCol(p_pos, p_pos + (p_width - 1));
+      handleSolidCol(p_pos, p_pos + (p_width));
+      handleSolidCol(p_pos, p_pos + (p_width + 1));
     }
   }
   for (Particle &p : particles) {
-    pBounds(p);
+    particleBounds(p);
   }
 }
 
@@ -372,10 +374,14 @@ inline const float Grid::getFlip(float Cell::*feild, float Cell::*pre_feild,
          vd_s;
 }
 
-inline const Grid::cellData Grid::getData(Particle &p, const bool mx,
-                                          const bool my) {
-  const float dx = mx ? 0.0f : RADIUS * f_cell_size;
-  const float dy = my ? 0.0f : RADIUS * f_cell_size;
+/// @brief Get the 4 grid cells and interpolation weights for sampling velocity
+/// @param sample_x Must be true when sampling x velocity
+/// @param sample_y Must be true when sampling y velocity
+/// @return Indecies for fluid cells under particle and interpolated weights for sampling velocity
+inline const Grid::InterpolationData Grid::getInterpolatedVel(Particle &p, const bool sample_x,
+                                          const bool sample_y) {
+  const float dx = sample_x ? 0.0f : RADIUS * f_cell_size;
+  const float dy = sample_y ? 0.0f : RADIUS * f_cell_size;
 
   const float x = std::clamp(p.x_pos, static_cast<float>(f_cell_size),
                              static_cast<float>((f_width - 1) * f_cell_size));
@@ -385,6 +391,7 @@ inline const Grid::cellData Grid::getData(Particle &p, const bool mx,
       std::min(static_cast<uint32_t>((x - dx) / f_cell_size), f_width - 2);
   const uint32_t y0 =
       std::min(static_cast<uint32_t>((y - dy) / f_cell_size), f_height - 2);
+
   const uint32_t x1 = std::min(x0 + 1, f_width - 2);
   const uint32_t y1 = std::min(y0 + 1, f_height - 2);
 
@@ -398,48 +405,49 @@ inline const Grid::cellData Grid::getData(Particle &p, const bool mx,
   assert(dx_1 <= 1.0f);
   assert(dy_1 <= 1.0f);
 
-  return cellData{
+  return InterpolationData{
       std::array<uint32_t, 4>{getFPos(x0, y0), getFPos(x1, y0), getFPos(x1, y1),
                               getFPos(x0, y1)},
       std::array<float, 4>{dx_1 * dy_1, dx_0 * dy_1, dx_0 * dy_0, dx_1 * dy_0}};
 }
 
+/// @brief Transferse fluid cell velocities to particles
 void Grid::cellVelToParticle() {
   for (Particle &p : particles) {
-    const cellData cdx = getData(p, true, false);
-    const cellData cdy = getData(p, false, true);
+    const InterpolationData x_vel_inter_data = getInterpolatedVel(p, true, false);
+    const InterpolationData y_vel_inter_data = getInterpolatedVel(p, false, true);
 
     const uint32_t offset_x = f_width;
     const uint32_t offset_y = 1;
 
-    const std::array<bool, 4> vx = getValidArr(cdx.f_pos, offset_x);
-    const std::array<bool, 4> vy = getValidArr(cdy.f_pos, offset_y);
+    const std::array<bool, 4> vx = getValidArr(x_vel_inter_data.f_pos, offset_x);
+    const std::array<bool, 4> vy = getValidArr(y_vel_inter_data.f_pos, offset_y);
 
-    const std::array<float, 4> vdx = {vx[0] * cdx.diff[0], vx[1] * cdx.diff[1],
-                                      vx[2] * cdx.diff[2], vx[3] * cdx.diff[3]};
-    const float vdx_s = vdx[0] + vdx[1] + vdx[2] + vdx[3];
+    const std::array<float, 4> vdx = {vx[0] * x_vel_inter_data.diff[0], vx[1] * x_vel_inter_data.diff[1],
+                                      vx[2] * x_vel_inter_data.diff[2], vx[3] * x_vel_inter_data.diff[3]};
+    const float vdx_sum = vdx[0] + vdx[1] + vdx[2] + vdx[3];
 
     const std::array<float, 4> vdy = {
-        vy[0] * cdy.diff[0],
-        vy[1] * cdy.diff[1],
-        vy[2] * cdy.diff[2],
-        vy[3] * cdy.diff[3],
+        vy[0] * y_vel_inter_data.diff[0],
+        vy[1] * y_vel_inter_data.diff[1],
+        vy[2] * y_vel_inter_data.diff[2],
+        vy[3] * y_vel_inter_data.diff[3],
     };
-    const float vdy_s = vdy[0] + vdy[1] + vdy[2] + vdy[3];
+    const float vdy_sum = vdy[0] + vdy[1] + vdy[2] + vdy[3];
 
-    if (vdx_s != 0.0f) {
-      const float pic_x_vel = getPic(&Cell::x_vel, cdx.f_pos, vdx, vdx_s);
+    if (vdx_sum != 0.0f) {
+      const float pic_x_vel = getPic(&Cell::x_vel, x_vel_inter_data.f_pos, vdx, vdx_sum);
       const float flip_x_vel =
-          getFlip(&Cell::x_vel, &Cell::p_x_vel, cdx.f_pos, vdx, vdx_s);
+          getFlip(&Cell::x_vel, &Cell::p_x_vel, x_vel_inter_data.f_pos, vdx, vdx_sum);
       p.x_vel = pic_x_vel * (1.0f - FLIP) + (flip_x_vel + p.x_vel) * FLIP;
     } else {
       p.x_vel = 0.0f;
     }
 
-    if (vdy_s != 0.0f) {
-      const float pic_y_vel = getPic(&Cell::y_vel, cdy.f_pos, vdy, vdy_s);
+    if (vdy_sum != 0.0f) {
+      const float pic_y_vel = getPic(&Cell::y_vel, y_vel_inter_data.f_pos, vdy, vdy_sum);
       const float flip_y_vel =
-          getFlip(&Cell::y_vel, &Cell::p_y_vel, cdy.f_pos, vdy, vdy_s);
+          getFlip(&Cell::y_vel, &Cell::p_y_vel, y_vel_inter_data.f_pos, vdy, vdy_sum);
       p.y_vel = pic_y_vel * (1.0f - FLIP) + (flip_y_vel + p.y_vel) * FLIP;
     } else {
       p.y_vel = 0.0f;
@@ -447,6 +455,7 @@ void Grid::cellVelToParticle() {
   }
 }
 
+/// @brief Transfers particle velocities to fluid cells
 void Grid::particleVelToCell() {
   std::fill(r_x.begin(), r_x.end(), 0.0f);
   std::fill(r_y.begin(), r_y.end(), 0.0f);
@@ -457,42 +466,33 @@ void Grid::particleVelToCell() {
     c.x_vel = 0.0f;
     c.y_vel = 0.0f;
 
-    if (c.getCellType() != Cell_Type::SOLID)
+    if (c.getCellType() != Cell_Type::SOLID) {
       c.setCellType(Cell_Type::AIR);
+    }
   }
 
+  // Set all fluid cells that contain particles to the liquid type
   for (Particle &p : particles) {
     const uint32_t x = static_cast<uint32_t>(p.x_pos);
     const uint32_t y = static_cast<uint32_t>(p.y_pos);
     const uint32_t f_pos = P2F(x, y);
-    if (f_grid[f_pos].getCellType() == Cell_Type::AIR)
+    if (f_grid[f_pos].getCellType() == Cell_Type::AIR) {
       f_grid[f_pos].setCellType(Cell_Type::LIQUID);
+    }
   }
 
   for (Particle &p : particles) {
-    const cellData cdx = getData(p, true, false);
-    const cellData cdy = getData(p, false, true);
+    const InterpolationData x_vel_inter_data = getInterpolatedVel(p, true, false);
+    const InterpolationData y_vel_inter_data = getInterpolatedVel(p, false, true);
 
-    f_grid[cdx.f_pos[0]].x_vel += cdx.diff[0] * p.x_vel;
-    f_grid[cdx.f_pos[1]].x_vel += cdx.diff[1] * p.x_vel;
-    f_grid[cdx.f_pos[2]].x_vel += cdx.diff[2] * p.x_vel;
-    f_grid[cdx.f_pos[3]].x_vel += cdx.diff[3] * p.x_vel;
-
-    f_grid[cdy.f_pos[0]].y_vel += cdy.diff[0] * p.y_vel;
-    f_grid[cdy.f_pos[1]].y_vel += cdy.diff[1] * p.y_vel;
-    f_grid[cdy.f_pos[2]].y_vel += cdy.diff[2] * p.y_vel;
-    f_grid[cdy.f_pos[3]].y_vel += cdy.diff[3] * p.y_vel;
-
-    r_x[cdx.f_pos[0]] += cdx.diff[0];
-    r_x[cdx.f_pos[1]] += cdx.diff[1];
-    r_x[cdx.f_pos[2]] += cdx.diff[2];
-    r_x[cdx.f_pos[3]] += cdx.diff[3];
-
-    r_y[cdy.f_pos[0]] += cdy.diff[0];
-    r_y[cdy.f_pos[1]] += cdy.diff[1];
-    r_y[cdy.f_pos[2]] += cdy.diff[2];
-    r_y[cdy.f_pos[3]] += cdy.diff[3];
+    for (uint8_t i = 0; i < 4; i++) {
+      f_grid[x_vel_inter_data.f_pos[i]].x_vel += x_vel_inter_data.diff[i] * p.x_vel;
+      f_grid[y_vel_inter_data.f_pos[i]].y_vel += y_vel_inter_data.diff[i] * p.y_vel;
+      r_x[x_vel_inter_data.f_pos[i]] += x_vel_inter_data.diff[i];
+      r_y[y_vel_inter_data.f_pos[i]] += y_vel_inter_data.diff[i];
+    }
   }
+
   for (uint32_t j = 0; j < f_height; j++) {
     for (uint32_t i = 0; i < f_width; i++) {
       const uint32_t f_pos = getFPos(i, j);
@@ -502,26 +502,33 @@ void Grid::particleVelToCell() {
           r_y[f_pos] == 0.0f ? 0.0f : f_grid[f_pos].y_vel / r_y[f_pos];
 
       if (f_grid[f_pos].getCellType() == Cell_Type::SOLID ||
-          (i > 0 && f_grid[f_pos - 1].getCellType() == Cell_Type::SOLID))
+          (i > 0 && f_grid[f_pos - 1].getCellType() == Cell_Type::SOLID)) {
         f_grid[f_pos].x_vel = f_grid[f_pos].p_x_vel;
+      }
+
       if (f_grid[f_pos].getCellType() == Cell_Type::SOLID ||
-          (j > 0 && f_grid[f_pos - f_width].getCellType() == Cell_Type::SOLID))
+          (j > 0 &&
+           f_grid[f_pos - f_width].getCellType() == Cell_Type::SOLID)) {
         f_grid[f_pos].y_vel = f_grid[f_pos].p_y_vel;
+      }
     }
-  }
-  for (uint32_t f_pos = 0; f_pos < num_f_cells; f_pos++) {
   }
 }
 
-void inline Grid::collideSolid(const uint32_t pos1, const uint32_t pos2) {
+/// @brief Handles collisions between solids and particles in pos1 and pos2.
+/// Pos1 and pos2 should be adjacent
+/// @param pos1 First particle grid index to check collisions
+/// @param pos2 Second particle grid index to check collisions
+void inline Grid::handleSolidCol(const uint32_t pos1, const uint32_t pos2) {
   if (pos2 < num_p_cells) {
+    assert(pos1 < num_p_cells);
     const uint8_t v1l = p_grid_size[pos1];
     for (uint32_t i = 0; i < v1l; i++) {
       Particle &p = *p_grid[pos1][i];
       const uint32_t x = (pos2 % p_width) / f_cell_size;
       const uint32_t y = (pos2 / p_width) / f_cell_size;
       const uint32_t f_pos2 = getFPos(x, y);
-      
+
       if (f_grid[f_pos2].getCellType() == Cell_Type::SOLID) {
         const uint32_t x0 = x * f_cell_size;
         const uint32_t y0 = y * f_cell_size;
@@ -531,10 +538,14 @@ void inline Grid::collideSolid(const uint32_t pos1, const uint32_t pos2) {
             std::clamp(p.x_pos, static_cast<float>(x0), static_cast<float>(x1));
         const float closest_y =
             std::clamp(p.y_pos, static_cast<float>(y0), static_cast<float>(y1));
-        const sf::Vector2f d3 = {p.x_pos - closest_x, p.y_pos - closest_y};
-        const float d2 = (d3.x * d3.x) + (d3.y * d3.y);
-        if (d2 <= (RADIUS_SQRD - PADDING)) {
-          if (d2 < PADDING) {
+        const sf::Vector2f corner_dist_vec = {p.x_pos - closest_x,
+                                          p.y_pos - closest_y};
+
+        const float corner_dist =
+            (corner_dist_vec.x * corner_dist_vec.x) + (corner_dist_vec.y * corner_dist_vec.y);
+        if (corner_dist <= (RADIUS_SQRD - PADDING)) {
+          if (corner_dist < PADDING) {
+            // Side collision
             const float overlap_left = p.x_pos - x0;
             const float overlap_right = x1 - p.x_pos;
             const float overlap_top = p.y_pos - y0;
@@ -542,24 +553,28 @@ void inline Grid::collideSolid(const uint32_t pos1, const uint32_t pos2) {
             const float min_overlap = std::min(
                 {overlap_left, overlap_right, overlap_top, overlap_bottom});
 
-            if (min_overlap == overlap_left)
+            if (min_overlap == overlap_left) {
               p.x_pos = x0 - RADIUS;
-            else if (min_overlap == overlap_right)
+            } else if (min_overlap == overlap_right) {
               p.x_pos = x1 + RADIUS;
-            else if (min_overlap == overlap_top)
+            } else if (min_overlap == overlap_top) {
               p.y_pos = y0 - RADIUS;
-            else if (min_overlap == overlap_bottom)
+            } else if (min_overlap == overlap_bottom) {
               p.y_pos = y1 + RADIUS;
+            }
           } else {
-            const float d = std::sqrt(d2);
-            const sf::Vector2f dir = d3 / d;
+            // Corner collision
+            const float d = std::sqrt(corner_dist);
+            const sf::Vector2f dir = corner_dist_vec / d;
             const float delta = RADIUS - d;
             p.x_pos += delta * dir.x;
             p.y_pos += delta * dir.y;
           }
-          if (std::abs(d3.x) > PADDING)
+
+          // Set velocity based on which side was collided with
+          if (std::abs(corner_dist_vec.x) > PADDING)
             p.x_vel = 0.0f;
-          if (std::abs(d3.y) > PADDING)
+          if (std::abs(corner_dist_vec.y) > PADDING)
             p.y_vel = 0.0f;
         }
       }
@@ -567,8 +582,13 @@ void inline Grid::collideSolid(const uint32_t pos1, const uint32_t pos2) {
   }
 }
 
-void inline Grid::collide(const uint32_t pos1, const uint32_t pos2) {
+/// @brief Handles collisions between particles in pos1 and pos2. Pos1 and pos2
+/// must be adjacent. Pos1 must be a valid grid position
+/// @param pos1 First particle grid index to check collisions
+/// @param pos2 Second particle grid index to check collisions
+void inline Grid::handleParticleCol(const uint32_t pos1, const uint32_t pos2) {
   if (pos2 < num_p_cells) {
+    assert(pos1 < num_p_cells);
     const uint8_t v1l = p_grid_size[pos1];
     const uint8_t v2l = p_grid_size[pos2];
     if (v2l > 0) {

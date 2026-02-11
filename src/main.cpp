@@ -12,7 +12,7 @@ int main(int argc, char *argv[]) {
   static constexpr uint32_t WIDTH = 360;
   static constexpr uint32_t HEIGHT = 150;
   static constexpr uint32_t F_CELL_RATIO = 3;
-  static constexpr uint32_t NUM_PARTICLES = 100000;
+  static constexpr uint32_t NUM_PARTICLES = 200000;
   static constexpr uint32_t RENDER_SCALE = 1;
   static constexpr uint32_t FRAME_LIMIT = 165;
 
@@ -34,7 +34,6 @@ int main(int argc, char *argv[]) {
   window.setFramerateLimit(FRAME_LIMIT);
 
   // Init grid
-
   for (uint32_t j = 0; j < HEIGHT; j++) {
     for (uint32_t i = 0; i < WIDTH; i++) {
       if (i == 0 || j == 0 || j == HEIGHT - 1 || i == WIDTH - 1) {
